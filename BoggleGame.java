@@ -51,7 +51,27 @@ public class BoggleGame implements BoggleGameInterface{
 
     @Override
     public boolean isWordInBoard(char[][] boggleBoard, String word) {
-        // TODO Implement this method
+        
+        // basic logic checks
+        if(word == null || boggleBoard == null || word.length() > (boggleBoard.length * boggleBoard.length))
+            return false;
+
+        // seach board for first letter in "word"
+        for(int i = 0; i < boggleBoard.length; i++){
+            for(int j = 0; j < boggleBoard.length; j++){
+                // Used to keep track of what tiles we have used so far
+                boolean[][] isUsed = new boolean[boggleBoard.length][boggleBoard.length];
+                if(boggleBoard[i][j] == word.charAt(0)){
+                    // if DFS function reuturns true its possible to make the desired word starting at [i][j]
+                    if(goingDeep(boggleBoard, word, i, j, 0, isUsed)){
+                        return true;
+                    }
+                }
+            }
+        }
+        // if first letter is not found on board return false.
+        // b/c it's imposible to craft word with board.
+        // no backtracking needed
         return false;
     }
 
@@ -104,13 +124,18 @@ public class BoggleGame implements BoggleGameInterface{
         else return null;
     }
 
-    
-    // HEY YOU STUPID PROGRAMMER!!!!!!
-    // THIS NEEDS FIXING!!!!!
+    // a helper method that allows for easy traversal of DFS data structure
+    // returns false if word is not found
     public boolean goingDeep(char[][] board, String word, int row, int col, int charIndex, boolean[][] isUsed){
 
-        // Base Case (found a path for entire length of "word")
-        if(index == word.length() - 1)
+        // Fail state ie init backtracking
+        char currValue = board[row][col];
+        if(currValue != word.charAt(charIndex)){
+            return false;
+        }
+        
+        // Sucess Case (found a path for entire length of "word")
+        if(charIndex == word.length() - 1)
             return true;
 
         // mark curr position as used
@@ -118,25 +143,84 @@ public class BoggleGame implements BoggleGameInterface{
 
         Tile currTile = new Tile(row,col);
         // Recursive Step
-        for(int i = 0; i < 7; i++){
+        for(int i = 0; i < 8; i++){
             Tile neighborTile = calcNeighbor(currTile, i);
-            if(neighborTile == null) throw Exception("WRONG MODE FOR NEIGHBOR CALC");
             
-            if(inBounds(board, neighborTile));{
+            if(neighborTile == null){
+                throw new  RuntimeException("WRONG MODE FOR NEIGHBOR CALC....");
+            } 
+            
+            if(inBounds(board, neighborTile)){
+                // if neigboring tile is not used.....
                 if(!isUsed[neighborTile.row][neighborTile.col]){
-                    if(board[neighborTile.row][neighborTile.col] == word.charAt(charIndex)){
-                        isUsed[neighborTile.row][neighborTile.col] = true;
-                        charIndex++;
-                        goingDeep(board, word, neighborTile.row, neighborTile.col, charIndex, visited);
+                    // check to see if neigboring tile contains the intended character
+                    if(board[neighborTile.row][neighborTile.col] == word.charAt(charIndex + 1)){
+                        // Increment charIndex because we are looking for the next occuring char when we recurse
+                        // putitng it in a new variable for recursing so we dont mess up this instance of the funcition in the event of backtracking
+                        int nextIndex = charIndex + 1;
+                        // if all characters are found return true
+                        if(goingDeep(board, word, neighborTile.row, neighborTile.col, nextIndex, isUsed)) return true;
+                        
                     }
                 }
             }
-            // unmark tile as used b/c atleast one of the above tests failed.
-            isUsed[neighborTile.row][neighborTile.col] = false;            
         }
+
+        // unmark tile as used b/c it was not usable in this instance
+        isUsed[row][col] = false;                    
         // If none of the neigboring cells worked the depth first search failed and no word was found
         return false;
     }
+
+    public boolean goingDeepPath(char[][] board, String word, int row, int col, int charIndex, boolean[][] isUsed, ArrayList<Tile> tiles){
+
+        // Fail state ie init backtracking
+        char currValue = board[row][col];
+        if(currValue != word.charAt(charIndex)){
+            return false;
+        }
+        
+        // Sucess Case (found a path for entire length of "word")
+        if(charIndex == word.length() - 1){
+            return true;
+        }
+
+        Tile currTile = new Tile(row,col);
+        // mark curr position as used
+        isUsed[row][col] = true;
+        // add tile to array list
+        tiles.add(currTile);
+
+        // Recursive Step
+        for(int i = 0; i < 8; i++){
+            Tile neighborTile = calcNeighbor(currTile, i);
+            
+            if(neighborTile == null){
+                throw new  RuntimeException("WRONG MODE FOR NEIGHBOR CALC....");
+            } 
+            
+            if(inBounds(board, neighborTile)){
+                // if neigboring tile is not used.....
+                if(!isUsed[neighborTile.row][neighborTile.col]){
+                    // check to see if neigboring tile contains the intended character
+                    if(board[neighborTile.row][neighborTile.col] == word.charAt(charIndex + 1)){
+                        // Increment charIndex because we are looking for the next occuring char when we recurse
+                        // putitng it in a new variable for recursing so we dont mess up this instance of the funcition in the event of backtracking
+                        int nextIndex = charIndex + 1;
+                        // if all characters are found return true
+                        if(goingDeepPath(board, word, neighborTile.row, neighborTile.col, nextIndex, isUsed, tiles)) return true;
+                        
+                    }
+                }
+            }
+        }
+
+        // unmark tile as used b/c it was not usable in this instance
+        isUsed[row][col] = false;
+        tiles.remove(tiles.size() - 1);                    
+        // If none of the neigboring cells worked the depth first search failed and no word was found
+        return false;
+    }    
 
     @Override
     public String anyWord(char[][] boggleBoard, DictInterface dictionary) {
@@ -146,8 +230,28 @@ public class BoggleGame implements BoggleGameInterface{
 
     @Override
     public ArrayList<Tile> markWordInBoard(char[][] boggleBoard, String word) {
-        // TODO Implement this method
+        // basics
+        if(boggleBoard == null || word == null){
+            return null;
+        }
+        word = word.toUpperCase();
+
+        // looping through entire board searching for the first desired char
+        for(int i = 0; i < boggleBoard.length; i ++){
+            for(int j = 0; j < boggleBoard.length; j++){
+                if(boggleBoard[i][j] == word.charAt(0)){
+                    boolean[][] isUsed = new boolean[boggleBoard.length][boggleBoard.length];
+                    ArrayList<Tile> path = new ArrayList<>();
+
+                    // if a path is possible for word return the path
+                    if(goingDeepPath(boggleBoard, word, i, j, 0, isUsed, path))
+                        return path;
+                }
+            }
+        }
+
         return null;
+
     }
 
     @Override
@@ -155,6 +259,8 @@ public class BoggleGame implements BoggleGameInterface{
         // basics
         if (boggleBoard == null || tiles == null || word == null) return false;
         if(tiles.size() != word.length()) return false;
+
+        word = word.toUpperCase();
 
         // A data strucutre to keep track of what tile have been used
         int n = boggleBoard.length;

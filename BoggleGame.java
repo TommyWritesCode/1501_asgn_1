@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Dictionary;
 import java.util.Random;
 
 public class BoggleGame implements BoggleGameInterface{
@@ -172,6 +173,72 @@ public class BoggleGame implements BoggleGameInterface{
         return false;
     }
 
+    public String wordFinder(char[][] board, DictInterface dict, StringBuilder word, int row, int col, boolean[][] isUsed, int minChars){
+
+        // Var used to keep track of whether or not our SB contains a prefix or a word
+        int word_dictStatus;
+
+        // Logical check built around DictInterface.java
+        if(dict == null){
+            return null;
+        }
+        else{
+            word_dictStatus = dict.searchPrefix(word);
+        }
+
+        // Fail State(s)
+        // check word is neither a prefix nor a word in the dictonary
+        if(word_dictStatus == 0){
+            return null;
+        }
+
+        // is prefix but not a word
+        if(word_dictStatus == 1 && word.length() >= board.length * board.length){
+            return null;
+        }
+
+        // sucess state(s)
+        if((word.length() >= minChars) && ((word_dictStatus == 2) || (word_dictStatus == 3))){
+            String validWord = word.toString();
+            return validWord;
+        }
+        
+
+        // mark curr position as used
+        isUsed[row][col] = true;
+
+        Tile currTile = new Tile(row,col);
+        // Recursive Step
+        for(int i = 0; i < 8; i++){
+            Tile neighborTile = calcNeighbor(currTile, i);
+            
+            if(neighborTile == null){
+                throw new  RuntimeException("WRONG MODE FOR NEIGHBOR CALC....");
+            } 
+            
+            if(inBounds(board, neighborTile)){
+                // if neigboring tile is not used.....
+                if(!isUsed[neighborTile.row][neighborTile.col]){
+                    word.append(board[neighborTile.row][neighborTile.col]);
+                    // Recursive step w/ neighbor tile
+                    String found = wordFinder(board, dict, word, neighborTile.row, neighborTile.col, isUsed, minChars);
+                    if(found != null){
+                        isUsed[row][col] = false;
+                        return found; 
+                    } 
+                    else
+                        word.deleteCharAt(word.length() -1); // The latest appended char was not compatable                      
+                }   
+            }        
+        }
+
+        // If none of the neigboring cells worked the depth first search failed and no word was found
+        // unmark tile as used b/c it was not usable in this instance
+        isUsed[row][col] = false; 
+        return null;
+    }
+
+
     public boolean goingDeepPath(char[][] board, String word, int row, int col, int charIndex, boolean[][] isUsed, ArrayList<Tile> tiles){
 
         // Fail state ie init backtracking
@@ -204,7 +271,6 @@ public class BoggleGame implements BoggleGameInterface{
                 if(!isUsed[neighborTile.row][neighborTile.col]){
                     // check to see if neigboring tile contains the intended character
                     if(board[neighborTile.row][neighborTile.col] == word.charAt(charIndex + 1)){
-                        // Increment charIndex because we are looking for the next occuring char when we recurse
                         // putitng it in a new variable for recursing so we dont mess up this instance of the funcition in the event of backtracking
                         int nextIndex = charIndex + 1;
                         // if all characters are found return true
@@ -224,7 +290,22 @@ public class BoggleGame implements BoggleGameInterface{
 
     @Override
     public String anyWord(char[][] boggleBoard, DictInterface dictionary) {
-        // TODO Implement this method
+        // looping through entire board searching for the first desired char
+        for(int i = 0; i < boggleBoard.length; i ++){
+            for(int j = 0; j < boggleBoard.length; j++){
+                
+                StringBuilder boggle_word = new StringBuilder();
+                boggle_word.append(boggleBoard[i][j]);
+
+                int word_dictStatus = dictionary.searchPrefix(boggle_word);
+                if(word_dictStatus == 1 || word_dictStatus == 3){
+                    boolean[][] isUsed = new boolean[boggleBoard.length][boggleBoard.length];
+                    String found = wordFinder(boggleBoard,dictionary,boggle_word,i,j,isUsed,3);
+                    if(found != null) return found;
+                }
+            }
+        }
+                    
         return null;
     }
 
@@ -234,7 +315,7 @@ public class BoggleGame implements BoggleGameInterface{
         if(boggleBoard == null || word == null){
             return null;
         }
-        word = word.toUpperCase();
+        word = word.toUpperCase(); // normalize input
 
         // looping through entire board searching for the first desired char
         for(int i = 0; i < boggleBoard.length; i ++){
@@ -317,7 +398,22 @@ public class BoggleGame implements BoggleGameInterface{
 
     @Override
     public String anyWord(char[][] boggleBoard, DictInterface dictionary, int length) {
-        // TODO Implement this method
+        // looping through entire board searching for the first desired char
+        for(int i = 0; i < boggleBoard.length; i ++){
+            for(int j = 0; j < boggleBoard.length; j++){
+                
+                StringBuilder boggle_word = new StringBuilder();
+                boggle_word.append(boggleBoard[i][j]);
+
+                int word_dictStatus = dictionary.searchPrefix(boggle_word);
+                if(word_dictStatus == 1 || word_dictStatus == 3){
+                    boolean[][] isUsed = new boolean[boggleBoard.length][boggleBoard.length];
+                    String found = wordFinder(boggleBoard,dictionary,boggle_word,i,j,isUsed,length);
+                    if(found != null) return found;
+                }
+            }
+        }
+                    
         return null;
     }
 
